@@ -1,0 +1,5 @@
+# 测试专用缓存配置
+# 基础配置：主缓存为 caffeine 类型
+cache.type = caffeine
+cache.maxSize = 1000
+cache.ttl = 3600
