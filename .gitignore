@@ -17,6 +17,9 @@ logs
 .classpath
 .log
 
+# idea #
+.idea
+
 # windows #
 Thumbs.db
 
