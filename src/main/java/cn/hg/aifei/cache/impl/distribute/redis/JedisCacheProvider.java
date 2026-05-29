@@ -19,12 +19,16 @@ package cn.hg.aifei.cache.impl.distribute.redis;
 import cn.aifei.util.Prop;
 import cn.hg.aifei.cache.api.ICache;
 import cn.hg.aifei.cache.api.ICacheProvider;
+import cn.hg.aifei.cache.serializer.Fastjson2ICacheSerializer;
+import cn.hg.aifei.cache.serializer.ICacheSerializer;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.Connection;
 import redis.clients.jedis.ConnectionPoolConfig;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.RedisClient;
-import cn.hg.aifei.cache.serializer.Fastjson2ICacheSerializer;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Jedis 缓存提供者
@@ -40,6 +44,7 @@ import cn.hg.aifei.cache.serializer.Fastjson2ICacheSerializer;
  *   <li>&lt;prefix&gt;maxTotal - 连接池最大连接数（默认 8）</li>
  *   <li>&lt;prefix&gt;maxIdle - 连接池最大空闲连接数（默认 8）</li>
  *   <li>&lt;prefix&gt;minIdle - 连接池最小空闲连接数（默认 0）</li>
+ *   <li>&lt;prefix&gt;serializer - 序列化器类型：jdk（默认）、fastjson2、jackson、hutool5、hutool6</li>
  * </ul>
  *
  * @author aifei
@@ -65,6 +70,30 @@ public class JedisCacheProvider implements ICacheProvider {
 
     /** 默认最小空闲连接数 */
     private static final int DEFAULT_MIN_IDLE = 0;
+
+    /** 默认序列化器类型 */
+    private static final String DEFAULT_SERIALIZER = "jdk";
+
+    /** 序列化器注册表：名称 -> 实现类，按注册顺序迭代 */
+    private static final Map<String, Class<? extends ICacheSerializer>> SERIALIZER_MAP = new LinkedHashMap<>();
+
+    static {
+        SERIALIZER_MAP.put("fastjson2", Fastjson2ICacheSerializer.class);
+        SERIALIZER_MAP.put("jackson", cn.hg.aifei.cache.serializer.JacksonCacheSerializer.class);
+        SERIALIZER_MAP.put("jdk", cn.hg.aifei.cache.serializer.JdkCacheSerializer.class);
+        SERIALIZER_MAP.put("hutool5", cn.hg.aifei.cache.serializer.Hutool5CacheSerializer.class);
+        SERIALIZER_MAP.put("hutool6", cn.hg.aifei.cache.serializer.Hutool6CacheSerializer.class);
+    }
+
+    /**
+     * 注册新的序列化器实现，用于扩展自定义序列化方式。
+     *
+     * @param name          序列化器名称（配置中使用的值，如 "kryo"）
+     * @param serializerClass 实现 ICacheSerializer 的类
+     */
+    public static void registerSerializer(String name, Class<? extends ICacheSerializer> serializerClass) {
+        SERIALIZER_MAP.put(name, serializerClass);
+    }
 
     /** 本 Provider 管理的 RedisClient */
     private RedisClient managedClient;
@@ -115,7 +144,30 @@ public class JedisCacheProvider implements ICacheProvider {
                 .poolConfig(poolConfig)
                 .build();
 
-        return new JedisCache(managedClient, name, ttl, new Fastjson2ICacheSerializer());
+        // 解析序列化器
+        ICacheSerializer serializer = resolveSerializer(prop.get(prefix + "serializer", DEFAULT_SERIALIZER));
+
+        return new JedisCache(managedClient, name, ttl, serializer);
+    }
+
+    /**
+     * 根据序列化器名称解析并创建对应的序列化器实例。
+     *
+     * @param type 序列化器名称（如 fastjson2、jackson）
+     * @return ICacheSerializer 实例
+     * @throws IllegalArgumentException 不支持的序列化器类型
+     */
+    private static ICacheSerializer resolveSerializer(String type) {
+        Class<? extends ICacheSerializer> clazz = SERIALIZER_MAP.get(type);
+        if (clazz == null) {
+            throw new IllegalArgumentException("不支持的序列化器类型: " + type
+                    + "，可选值: " + String.join(", ", SERIALIZER_MAP.keySet()));
+        }
+        try {
+            return clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException("实例化序列化器失败: " + type, e);
+        }
     }
 
     /**

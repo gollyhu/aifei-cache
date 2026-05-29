@@ -53,21 +53,23 @@ import java.util.concurrent.ConcurrentHashMap;
  * # 扩展缓存实例名称列表（逗号分隔）
  * cache.names = c1,local
  *
- * # 【主缓存，必须配置 - Redisson】
- * cache.type = redisson
+ * # 【主缓存，必须配置 - Jedis】
+ * cache.type = jedis
  * cache.address = 127.0.0.1:6379
  * cache.password =
  * cache.database = 0
  * cache.ttl = 3600
- * # namespace 配置
+ * # namespace 可空配置，不配置则默认 "aifei"
  * cache.namespace = aifei
+ * # 序列化器，不配置则默认为 jdk 序列化器
+ * cache.serializer = fastjson2
  *
  * # 【c1缓存 - Redisson】
  * cache.c1.type = redisson
  * cache.c1.address = 127.0.0.1:6379
  * cache.c1.ttl = 7200
  * # 自定义 namespace，不配置则默认 "aifei"
- * cache.c1.namespace = redisPrefix
+ * cache.c1.namespace = prefix
  *
  * # 【local缓存 - ConcurrentHashMap】
  * cache.local.type = local
