@@ -16,9 +16,11 @@
 
 package cn.hg.aifei.cache.serializer;
 
-import cn.hutool.json.JSONUtil;
+import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import cn.hg.aifei.cache.api.CacheOperationException;
 
 /**
@@ -48,7 +50,14 @@ public class Hutool5CacheSerializer implements ICacheSerializer {
 
     /**
      * 反序列化：将字节数组恢复为原始对象。
-     * 通过解析包装 JSON 中的类型信息，调用 JSONUtil.toBean 进行精确还原。
+     * <p>
+     * {@code valueObj} 来自 {@link JSONObject#get(String)}，已是解析后的 Java 对象：
+     * <ul>
+     *   <li>String/Number/Boolean → 直接作为基础类型返回（需精确匹配数值类型）</li>
+     *   <li>JSONObject → 原始值为 Map/POJO，转为目标类型实例</li>
+     *   <li>JSONArray → 原始值为 List/Set 等集合，转为 {@code ArrayList}</li>
+     * </ul>
+     * </p>
      */
     @Override
     public Object deserialize(byte[] bytes) {
@@ -61,10 +70,53 @@ public class Hutool5CacheSerializer implements ICacheSerializer {
         Object valueObj = wrapper.get(KEY_VALUE);
         try {
             Class<?> clazz = Class.forName(typeName);
-            // 将 value 部分（可能是 JSONObject）转换为目标类型的实例
-            return JSONUtil.toBean(JSONUtil.parseObj(valueObj), clazz);
+
+            // JSONObject → 原始值为 Map/POJO
+            if (valueObj instanceof JSONObject) {
+                // Map 类型：JSONObject 本身实现了 Map<String, Object>，直接转型
+                if (Map.class.isAssignableFrom(clazz)) {
+                    return (Map<?, ?>) valueObj;
+                }
+                // POJO 类型：通过 setter 反射注入属性
+                return JSONUtil.toBean((JSONObject) valueObj, clazz);
+            }
+            // JSONArray → 原始值为 List/Set/数组，转换为 ArrayList
+            if (valueObj instanceof JSONArray) {
+                return ((JSONArray) valueObj).toList(Object.class);
+            }
+            // Number → 确保数值类型精确匹配（解决 Hutool 对 Long/Integer 的类型推断问题）
+            if (valueObj instanceof Number) {
+                return convertNumber((Number) valueObj, clazz);
+            }
+            // String / Boolean 等基础类型直接返回
+            return valueObj;
         } catch (ClassNotFoundException e) {
             throw new CacheOperationException("无法找到类型: " + typeName, e);
         }
+    }
+
+    /**
+     * 根据目标类型精确转换 Number 子类，防止 Long↔Integer 类型降级导致的精度丢失。
+     */
+    private static Object convertNumber(Number number, Class<?> targetType) {
+        if (targetType == Long.class || targetType == long.class) {
+            return number.longValue();
+        }
+        if (targetType == Integer.class || targetType == int.class) {
+            return number.intValue();
+        }
+        if (targetType == Double.class || targetType == double.class) {
+            return number.doubleValue();
+        }
+        if (targetType == Float.class || targetType == float.class) {
+            return number.floatValue();
+        }
+        if (targetType == Short.class || targetType == short.class) {
+            return number.shortValue();
+        }
+        if (targetType == Byte.class || targetType == byte.class) {
+            return number.byteValue();
+        }
+        return number;
     }
 }

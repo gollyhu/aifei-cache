@@ -52,6 +52,7 @@ public class JedisCacheTest {
         prop.getProperties().setProperty("cache.database", "0");
         prop.getProperties().setProperty("cache.ttl", "60");
         prop.getProperties().setProperty("cache.nullValue", "true");
+        prop.getProperties().setProperty("cache.serializer", "jackson");
 
         cachePlugin = new CachePlugin(prop);
         cachePlugin.start();

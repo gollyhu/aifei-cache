@@ -18,6 +18,7 @@ package cn.hg.aifei.cache.serializer;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import java.io.IOException;
 
 /**
@@ -30,12 +31,21 @@ public class JacksonCacheSerializer implements ICacheSerializer {
 
     /**
      * 使用默认配置构造序列化器。
-     * 开启 NON_FINAL 类型记录，保证反序列化可还原具体类型。
+     * <p>
+     * 开启 {@link ObjectMapper.DefaultTyping#JAVA_LANG_OBJECT} 类型记录策略，
+     * 配合 {@link #serialize(Object)} 中显式声明 {@code Object.class} 目标类型，
+     * 确保 Long、Integer 等 final 包装类型也能写入 {@code @class} 类型信息，
+     * 避免反序列化时被降级（如 Long → Integer）。
+     * </p>
      */
     public JacksonCacheSerializer() {
         this.objectMapper = new ObjectMapper();
-        // Jackson 2.0 兼容写法，在较新版本中此方法已废弃
-        this.objectMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+        this.objectMapper.activateDefaultTyping(
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfBaseType(Object.class)
+                        .build(),
+                ObjectMapper.DefaultTyping.JAVA_LANG_OBJECT
+        );
     }
 
     /**
@@ -53,7 +63,9 @@ public class JacksonCacheSerializer implements ICacheSerializer {
             return null;
         }
         try {
-            return objectMapper.writeValueAsBytes(value);
+            // 使用 writerFor(Object.class) 显式声明目标类型为 Object，
+            // 配合 JAVA_LANG_OBJECT 策略，触发 Jackson 为所有类型（含 final 类）写入 @class 类型信息
+            return objectMapper.writerFor(Object.class).writeValueAsBytes(value);
         } catch (IOException e) {
             throw new SerializationException("Jackson 序列化失败", e);
         }
