@@ -51,6 +51,7 @@ public class KeyGenerator {
         ENGINE = Engine.create("cacheKeyEngine");
         ENGINE.setToClassPathSourceFactory();
         ENGINE.addDirective("para", ParaDirective.class);
+        ENGINE.addDirective("p", ParaDirective.class);
     }
 
     /**
