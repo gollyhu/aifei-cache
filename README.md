@@ -16,7 +16,7 @@
 - **回源保护**：`get(cacheName, key, supplier)` 缓存穿透保护；分布式实现内置锁防击穿
 - **null 值缓存**：可选 `nullValue` 模式，区分"键不存在"和"值为 null"
 - **注解驱动**：`@CachePut` / `@CacheEvict` / `@CachesEvict` 无侵入缓存
-- **多序列化器**：Fastjson2 / Jackson / Hutool5 / Hutool6 / JDK 内置序列化
+- **多序列化器**：Fastjson2 / Jackson / Hutool5 / JDK 内置序列化
 - **配置驱动**：通过 Aifei Plugin 机制从配置文件加载缓存实例，零代码切换后端
 
 ## 依赖
@@ -36,7 +36,6 @@
 | [Fastjson2](https://github.com/alibaba/fastjson2) | 2.0.62 | JSON 序列化（带类型信息） |
 | [Jackson](https://github.com/FasterXML/jackson) | 2.21.3 | JSON 序列化（带类型信息） |
 | [Hutool-json](https://hutool.cn/) | 5.8.38 | JSON 序列化（5.x 版本） |
-| [Hutool-json v6](https://hutool.cn/) | 6.0.0-M22 | JSON 序列化（6.x 版本） |
 
 ### 测试期依赖
 
@@ -110,6 +109,7 @@ cache.c1.type = jedis
 cache.c1.address = 127.0.0.1:6379
 cache.c1.database = 1
 cache.c1.ttl = 7200
+cache.c1.serializer = jdk
 
 # 【local 缓存 - ConcurrentHashMap】
 cache.local.type = local

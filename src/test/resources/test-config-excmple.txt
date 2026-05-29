@@ -8,6 +8,7 @@ cache.address = 127.0.0.1:6379
 cache.password =
 cache.database = 0
 cache.ttl = 3600
+cache.serializer = jdk
 
 # 【c1缓存 - Redisson】
 cache.c1.type = redisson

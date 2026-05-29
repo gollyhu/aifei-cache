@@ -44,7 +44,7 @@ import java.util.Map;
  *   <li>&lt;prefix&gt;maxTotal - 连接池最大连接数（默认 8）</li>
  *   <li>&lt;prefix&gt;maxIdle - 连接池最大空闲连接数（默认 8）</li>
  *   <li>&lt;prefix&gt;minIdle - 连接池最小空闲连接数（默认 0）</li>
- *   <li>&lt;prefix&gt;serializer - 序列化器类型：jdk（默认）、fastjson2、jackson、hutool5、hutool6</li>
+ *   <li>&lt;prefix&gt;serializer - 序列化器类型：jdk（默认）、fastjson2、jackson、hutool5</li>
  * </ul>
  *
  * @author aifei
@@ -82,7 +82,6 @@ public class JedisCacheProvider implements ICacheProvider {
         SERIALIZER_MAP.put("jackson", cn.hg.aifei.cache.serializer.JacksonCacheSerializer.class);
         SERIALIZER_MAP.put("jdk", cn.hg.aifei.cache.serializer.JdkCacheSerializer.class);
         SERIALIZER_MAP.put("hutool5", cn.hg.aifei.cache.serializer.Hutool5CacheSerializer.class);
-        SERIALIZER_MAP.put("hutool6", cn.hg.aifei.cache.serializer.Hutool6CacheSerializer.class);
     }
 
     /**
