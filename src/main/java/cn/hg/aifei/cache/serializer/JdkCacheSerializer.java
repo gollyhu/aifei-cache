@@ -27,7 +27,7 @@ import java.io.Serializable;
  * <p>
  * 要求缓存值必须实现 {@link Serializable} 接口，适用于简单的 Java 对象缓存场景。
  */
-public class JdkICacheSerializer implements ICacheSerializer {
+public class JdkCacheSerializer implements ICacheSerializer {
 
     @Override
     public byte[] serialize(Object value) {
