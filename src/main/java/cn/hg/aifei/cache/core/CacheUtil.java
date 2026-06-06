@@ -18,6 +18,7 @@ package cn.hg.aifei.cache.core;
 
 import cn.hg.aifei.cache.api.ICache;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -154,7 +155,7 @@ public final class CacheUtil {
      * @param keys      缓存 key 集合
      * @return 存在的键值对
      */
-    public static Map<String, Object> getAll(String cacheName, Set<String> keys) {
+    public static Map<String, Object> getAll(String cacheName, Collection<String> keys) {
         return use().getAll(cacheName, keys);
     }
 
@@ -278,4 +279,8 @@ public final class CacheUtil {
         use().setDefaultTtl(ttlSeconds);
     }
 
+
+    public static boolean isNullValue(){
+        return use().isNullValue();
+    }
 }

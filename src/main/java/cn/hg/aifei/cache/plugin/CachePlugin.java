@@ -16,6 +16,8 @@
 
 package cn.hg.aifei.cache.plugin;
 
+import cn.aifei.aop.Aop;
+import cn.aifei.aop.AopKit;
 import cn.aifei.log.Log;
 import cn.aifei.plugin.Plugin;
 import cn.aifei.util.Prop;
@@ -148,11 +150,14 @@ public class CachePlugin implements Plugin {
     public void start() {
         LOG.info("CachePlugin starting...");
 
-        // 1. 初始化主缓存（必须配置）
+        // 1. 初始化主缓存（必配）
         initMainCache();
 
         // 2. 初始化扩展缓存（可选）
         initExtensionCaches();
+
+        // 3. 注册注入式缓存
+        registerInjectableCache();
 
         LOG.info("CachePlugin started, registered {} caches", registeredCount);
     }
@@ -247,6 +252,25 @@ public class CachePlugin implements Plugin {
         registeredCount++;
 
         LOG.info("Main cache initialized: type={}, namespace='{}'", type, namespace);
+    }
+
+    private static void registerInjectableCache() {
+        try {
+            AopKit.get().addSingletonObject(ICache.class, InjectableCache.INSTANCE);
+        } catch (RuntimeException e) {
+            ICache existing = currentAopCache();
+            if (existing == InjectableCache.INSTANCE) {
+                return;
+            }
+            throw new IllegalStateException("Aop singleton for ICache.class already exists", e);
+        }
+    }
+    private static ICache currentAopCache() {
+        try {
+            return Aop.get(ICache.class);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     /**
