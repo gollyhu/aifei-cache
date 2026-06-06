@@ -10,6 +10,9 @@
 
 ## 特性
 
+- **静态缓存操作**：CacheUtil 的静态接口 `put` / `get` / `evict` / `clear` 等直接缓存操作
+- **缓存注入**：Aifei AOP 创建或注入的业务对象中直接注入 `ICache`
+- **多种缓存实例**：可同时定义多种缓存实例，如主缓存使用 Jedis，第二缓存为 Encache，第三缓存等等
 - **统一 API**：`ICache` 接口定义 `put` / `get` / `evict` / `clear` 等原子操作
 - **缓存分组**：通过 `cacheName` 参数实现多业务数据隔离，namespace 全局前缀防冲突
 - **多后端支持**：Caffeine / Ehcache / Local / Redisson / Jedis / Lettuce 六种实现
@@ -19,6 +22,127 @@
 - **多序列化器**：Fastjson2 / Jackson / Hutool5 / JDK 内置序列化
 - **配置驱动**：通过 Aifei Plugin 机制从配置文件加载缓存实例，零代码切换后端
 
+
+
+
+
+## 使用缓存
+
+```java
+// 方式一：CacheUtil 静态方法（使用默认缓存实例）
+CacheUtil.put("product", "prod-1001", productInfo, 300);
+Product p = CacheUtil.get("product", "prod-1001");
+
+// 方式二：指定缓存实例
+ICache cache = CacheUtil.use("c1");
+cache.put("order", "order-2001", orderInfo);
+
+// 方式三：回源获取（缓存穿透保护）
+User user = CacheUtil.get("user", "uid:" + uid,
+    () -> db.findById(uid), 600);
+
+// 方式四：注入缓存
+@Inject
+ICache cache;
+cache.CacheUtil.get("product", "prod-1001");
+
+// 方式五：注解缓存，缓存于指定的 "mem" 缓存实例中（需配合 @Before(CacheInterceptor.class)）
+@CachePut(name = "product", key = "prod-#p(id)", ttlSeconds = 300, cache = "mem")
+public Product getProduct(Long id) { ... }
+```
+
+
+
+
+
+## 启用缓存
+
+### 1. 添加 Maven 依赖
+
+```xml
+<dependency>
+    <groupId>cn.hg.aifei</groupId>
+    <artifactId>aifei-cache</artifactId>
+    <version>1.0.1</version>
+</dependency>
+
+<!-- 必须 -->
+<dependency>
+    <groupId>cn.aifei</groupId>
+    <artifactId>aifei-log</artifactId>
+    <version>1.0.1</version>
+</dependency>
+
+<!-- 注解缓存必须 -->
+<dependency>
+    <groupId>cn.aifei</groupId>
+    <artifactId>aifei-enjoy</artifactId>
+    <version>1.0.1</version>
+</dependency>
+```
+
+
+
+### 2. 配置缓存
+
+在 Aifei 配置文件（`app-config.txt`）中添加：
+
+```properties
+# ──────────────── 缓存配置 ────────────────
+# 扩展缓存实例名称列表（逗号分隔）
+cache.names = c1,mem
+
+# 【主缓存，必须配置 - Redisson】
+cache.type = redisson
+cache.address = 127.0.0.1:6379
+cache.password =
+cache.database = 0
+cache.ttl = 3600
+cache.nullValue = true
+
+# 【c1 缓存 - Jedis】
+cache.c1.type = jedis
+cache.c1.address = 127.0.0.1:6379
+cache.c1.database = 1
+cache.c1.ttl = 7200
+cache.c1.serializer = jdk
+
+# 【local 缓存 - ehcache】
+cache.mem.type = ehcache
+cache.mem.heapEntries = 10000
+cache.meme.ttl = 0
+```
+
+
+
+### 3.  CachePlugin 插件
+
+```java
+public class AppConfig implements AifeiConfig<In, Out> {
+    private Prop p;
+    public void config(Settings<In, Out> settings) {
+        // 加载配置（命令行传递参数需放此处，例如：--aifei.profiles.active=pro）
+        p = PropKit.use("app-config.txt");
+    }
+    
+    // 配置缓存拦截器，注解缓存必须（重要）
+    public void config(Routes routes) {
+        routes.scan("cn.aifei", new CacheInterceptor());
+    }
+    // 配置缓存插件
+    public void config(Plugins plugins) {
+        // ──────────────── 缓存插件 ────────────────
+        // 创建并注册缓存插件，从 app-config.txt 读取缓存配置
+        CachePlugin cachePlugin = new CachePlugin(p);
+        plugins.add(cachePlugin);
+    }
+}
+```
+
+
+
+
+
 ## 依赖
 
 ### 编译期依赖
@@ -26,16 +150,16 @@
 | 依赖 | 版本 | 说明 |
 |------|------|------|
 | [Aifei](https://gitee.com/gollyhu) | 1.0.1 | Aifei 框架核心 |
-| aifei-log | 1.0.1 | Aifei 日志模块 |
-| aifei-enjoy | 1.0.1 | Enjoy 模板引擎（缓存 Key 表达式） |
+| aifei-log | 1.0.1 | Aifei 日志模块（必须） |
+| aifei-enjoy | 1.0.1 | Enjoy 模板引擎（缓存 Key 表达式）缓存注解依赖 |
 | [Caffeine](https://github.com/ben-manes/caffeine) | 2.9.3 | 高性能本地缓存库 |
 | [Ehcache](https://www.ehcache.org/) | 3.8.1 | JSR-107 兼容本地缓存 |
 | [Redisson](https://github.com/redisson/redisson) | 4.4.0 | Redis 分布式缓存客户端 |
 | [Jedis](https://github.com/redis/jedis) | 7.5.0 | Redis Java 客户端 |
 | [Lettuce](https://lettuce.io/) | 7.5.2 | 同步/异步/响应式 Redis 客户端 |
-| [Fastjson2](https://github.com/alibaba/fastjson2) | 2.0.62 | JSON 序列化（带类型信息） |
-| [Jackson](https://github.com/FasterXML/jackson) | 2.21.3 | JSON 序列化（带类型信息） |
-| [Hutool-json](https://hutool.cn/) | 5.8.38 | JSON 序列化（5.x 版本） |
+| [Fastjson2](https://github.com/alibaba/fastjson2) | 2.0.62 | JSON 序列化（Jedis 专用） |
+| [Jackson](https://github.com/FasterXML/jackson) | 2.21.3 | JSON 序列化（Jedis 专用） |
+| [Hutool-json](https://hutool.cn/) | 5.8.38 | JSON 序列化（Jedis 专用） |
 
 ### 测试期依赖
 
@@ -75,70 +199,9 @@ ICache (接口)
 | `@CachesEvict` | 组合注解，支持多条 `@CacheEvict` 规则 |
 | `CacheInterceptor` | AOP 拦截器，解析注解并自动处理缓存读写 |
 
-## 快速开始
-
-### 1. 添加 Maven 依赖
-
-```xml
-<dependency>
-    <groupId>cn.hg.aifei</groupId>
-    <artifactId>aifei-cache</artifactId>
-    <version>1.0.0</version>
-</dependency>
-```
-
-### 2. 配置缓存
-
-在 Aifei 配置文件（`app-config.txt`）中添加：
-
-```properties
-# ──────────────── 缓存配置 ────────────────
-# 扩展缓存实例名称列表（逗号分隔）
-cache.names = c1,local
-
-# 【主缓存，必须配置 - Redisson】
-cache.type = redisson
-cache.address = 127.0.0.1:6379
-cache.password =
-cache.database = 0
-cache.ttl = 3600
-cache.nullValue = true
-
-# 【c1 缓存 - Jedis】
-cache.c1.type = jedis
-cache.c1.address = 127.0.0.1:6379
-cache.c1.database = 1
-cache.c1.ttl = 7200
-cache.c1.serializer = jdk
-
-# 【local 缓存 - ConcurrentHashMap】
-cache.local.type = local
-cache.local.ttl = 0
-```
-
-### 3. 使用缓存
-
-```java
-// 方式一：CacheUtil 静态方法（使用默认缓存实例）
-CacheUtil.put("product", "prod-1001", productInfo, 300);
-Product p = CacheUtil.get("product", "prod-1001");
-
-// 方式二：指定缓存实例
-ICache cache = CacheUtil.use("c1");
-cache.put("order", "order-2001", orderInfo);
-
-// 方式三：回源获取（缓存穿透保护）
-User user = CacheUtil.get("user", "uid:" + uid,
-    () -> db.findById(uid), 600);
-
-// 方式四：注解缓存（需配合 @Before(CacheInterceptor.class)）
-@CachePut(name = "product", key = "prod-#para(id)", ttlSeconds = 300)
-public Product getProduct(Long id) { ... }
-```
-
 ## API 参考
 
-### ICache、CacheUtil 核心方法
+### ICache、CacheUtil  核心方法
 
 | 方法 | 说明 |
 |------|------|
@@ -158,7 +221,7 @@ public Product getProduct(Long id) { ... }
 | `getTtl(cacheName, key)` | 获取 Key 剩余 TTL（-1 永久，-2 不存在） |
 | `getCacheNames()` | 获取所有已记录的 cacheName 集合 |
 | `getNamespace()` | 获取命名空间 |
-| use("name") | CacheUtil 专用，指定缓存实例 |
+| use("mem") | CacheUtil 专用，指定缓存实例 |
 
 ### 存储键规则
 
@@ -189,10 +252,13 @@ cacheName:key              # namespace 为空时
 | | `maxTotal` | 8 | 连接池最大连接数 |
 | | `maxIdle` | 8 | 连接池最大空闲连接数 |
 | | `minIdle` | 0 | 连接池最小空闲连接数 |
+| | cache.serializer | jdk | 缓存序列化器，支持 jdk（默认）、fastjson2、jackson、hutool5 |
 | **lettuce** | `address` | 127.0.0.1:6379 | Redis 地址 |
 | | `password` | - | Redis 密码 |
 | | `database` | 0 | 数据库编号 |
 | | `ttl` | 3600 | 默认过期时间（秒） |
+
+
 
 ### 通用配置项
 
@@ -200,7 +266,7 @@ cacheName:key              # namespace 为空时
 |--------|------|--------|
 | `namespace` | 全局 Key 前缀，用于多环境隔离 | `aifei`（显式设为空字符串关闭） |
 | `nullValue` | 是否允许缓存 null 值 | `false` |
-| `provider` | 自定义 Provider 全限定类名 | 按 type 自动匹配 |
+
 
 > **配置前缀说明**：主缓存使用 `cache.` 前缀；扩展缓存使用 `cache.<name>.` 前缀。
 
@@ -247,7 +313,6 @@ src/main/java/cn/hg/aifei/cache/
 │   ├── Fastjson2ICacheSerializer.java
 │   ├── JacksonCacheSerializer.java
 │   ├── Hutool5CacheSerializer.java
-│   ├── Hutool6CacheSerializer.java
 │   └── JdkICacheSerializer.java
 └── impl/                            # 缓存实现
     ├── local/                       #   本地缓存
