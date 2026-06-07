@@ -19,7 +19,6 @@ package cn.hg.aifei.cache.interceptor;
 import cn.aifei.core.Input;
 import cn.aifei.enjoy.Engine;
 import cn.aifei.enjoy.Template;
-import cn.aifei.log.Log;
 import cn.hg.aifei.cache.interceptor.directive.ParaDirective;
 
 import java.lang.reflect.Method;
@@ -41,8 +40,6 @@ import java.util.Map;
  * @author aifei
  */
 public class KeyGenerator {
-
-    private static final Log LOG = Log.get(KeyGenerator.class);
 
     /** 独立的 Enjoy 引擎实例 */
     private static final Engine ENGINE;
@@ -77,12 +74,8 @@ public class KeyGenerator {
                 Template template = ENGINE.getTemplateByString(expression);
                 String result = template.renderToString(scope);
 
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Generated cache key: expression='{}' -> key='{}'", expression, result);
-                }
                 return result;
             } catch (cn.aifei.enjoy.stat.ParseException e) {
-                LOG.warn("Failed to parse key expression '{}', using raw expression: {}", expression, e.getMessage());
                 return expression;
             }
         } finally {

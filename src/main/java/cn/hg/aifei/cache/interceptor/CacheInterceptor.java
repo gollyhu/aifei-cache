@@ -19,7 +19,6 @@ package cn.hg.aifei.cache.interceptor;
 import cn.aifei.aop.Interceptor;
 import cn.aifei.aop.Invocation;
 import cn.aifei.core.Input;
-import cn.aifei.log.Log;
 import cn.aifei.util.StrUtil;
 import cn.hg.aifei.cache.annotation.CacheEvict;
 import cn.hg.aifei.cache.annotation.CachePut;
@@ -51,8 +50,6 @@ import java.lang.reflect.Method;
  * @author aifei
  */
 public class CacheInterceptor implements Interceptor {
-
-    private static final Log LOG = Log.get(CacheInterceptor.class);
 
     @Override
     public void intercept(Invocation inv) throws Throwable {
@@ -102,15 +99,8 @@ public class CacheInterceptor implements Interceptor {
         // 1. 尝试从缓存获取
         Object cachedValue = cache.get(name, key);
         if (cachedValue != null) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Cache HIT: name='{}', key='{}'", name, key);
-            }
             inv.setReturnValue(cachedValue);
             return;
-        }
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Cache MISS: name='{}', key='{}', executing method", name, key);
         }
 
         try {
@@ -147,24 +137,16 @@ public class CacheInterceptor implements Interceptor {
         String[] rawKeys = annotation.key();
 
         if (rawKeys.length == 0) {
-            // 不指定 key 时，清空整个缓存区域
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("@CacheEvict clear cache area: name='{}'", annotation.name());
-            }
             cache.clear(annotation.name());
             return;
         }
 
-        // 逐个计算 Key 并删除
         for (String keyExpr : rawKeys) {
             try {
                 String key = KeyGenerator.generate(keyExpr, method, args, input);
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("@CacheEvict evict: name='{}', key='{}'", annotation.name(), key);
-                }
                 cache.evict(annotation.name(), key);
             } catch (Exception e) {
-                LOG.error("Error evicting cache: name='{}', keyExpr='{}'", annotation.name(), keyExpr, e);
+                // evict 失败时静默忽略
             }
         }
     }
@@ -178,8 +160,6 @@ public class CacheInterceptor implements Interceptor {
         }
         ICache cache = CacheManager.getCache(cacheName);
         if (cache == null) {
-            // 回退到默认缓存实例
-            LOG.warn("Cache instance '{}' not found, falling back to default", cacheName);
             cache = CacheManager.getCache(ICache.DEFAULT_CACHE_NAME);
         }
         return cache;
@@ -203,8 +183,6 @@ public class CacheInterceptor implements Interceptor {
         Input input = inv.getInput();
         Method method = inv.getMethod();
         if (input == null) {
-            LOG.warn("Cannot resolve method args: both getArgs() and getInput() are null, "
-                    + "cache annotation on method '{}' will use empty args", method.getName());
             return new Object[0];
         }
 

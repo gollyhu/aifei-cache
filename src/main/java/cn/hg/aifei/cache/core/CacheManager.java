@@ -16,7 +16,6 @@
 
 package cn.hg.aifei.cache.core;
 
-import cn.aifei.log.Log;
 import cn.hg.aifei.cache.api.ICache;
 
 import java.util.Collections;
@@ -43,8 +42,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author aifei
  */
 public class CacheManager {
-
-    private static final Log LOG = Log.get(CacheManager.class);
 
     /**
      * 单例持有类 - 延迟加载，线程安全
@@ -119,7 +116,6 @@ public class CacheManager {
             throw new IllegalArgumentException("Cache instance can not be null");
         }
         getInstance().cacheMap.put(name, cache);
-        LOG.info("Register cache: name={}, type={}, namespace={}", name, cache.getType(), cache.getNamespace());
     }
 
     /**
@@ -146,12 +142,7 @@ public class CacheManager {
     public static ICache removeCache(String name) {
         ICache cache = getInstance().cacheMap.remove(name);
         if (cache != null) {
-            LOG.info("Remove cache: name={}, type={}", name, cache.getType());
-            try {
-                cache.clearAll();
-            } catch (Exception e) {
-                LOG.error("Error clearing cache: " + name, e);
-            }
+            cache.clearAll();
         }
         return cache;
     }

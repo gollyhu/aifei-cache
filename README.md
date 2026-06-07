@@ -66,13 +66,6 @@ public Product getProduct(Long id) { ... }
     <version>1.0.1</version>
 </dependency>
 
-<!-- 必须 -->
-<dependency>
-    <groupId>cn.aifei</groupId>
-    <artifactId>aifei-log</artifactId>
-    <version>1.0.1</version>
-</dependency>
-
 <!-- 注解缓存必须 -->
 <dependency>
     <groupId>cn.aifei</groupId>
@@ -150,7 +143,6 @@ public class AppConfig implements AifeiConfig<In, Out> {
 | 依赖 | 版本 | 说明 |
 |------|------|------|
 | [Aifei](https://gitee.com/gollyhu) | 1.0.1 | Aifei 框架核心 |
-| aifei-log | 1.0.1 | Aifei 日志模块（必须） |
 | aifei-enjoy | 1.0.1 | Enjoy 模板引擎（缓存 Key 表达式）缓存注解依赖 |
 | [Caffeine](https://github.com/ben-manes/caffeine) | 2.9.3 | 高性能本地缓存库 |
 | [Ehcache](https://www.ehcache.org/) | 3.8.1 | JSR-107 兼容本地缓存 |
@@ -166,7 +158,6 @@ public class AppConfig implements AifeiConfig<In, Out> {
 | 依赖 | 版本 | 说明 |
 |------|------|------|
 | JUnit | 4.13.2 | 单元测试框架 |
-| SLF4J Simple | 2.0.18 | 测试日志实现 |
 
 ## 架构
 

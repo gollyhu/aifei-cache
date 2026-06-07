@@ -16,14 +16,12 @@
 
 package cn.hg.aifei.cache;
 
-import cn.aifei.log.LogKit;
 import cn.aifei.util.Prop;
 import cn.hg.aifei.cache.api.ICache;
 import cn.hg.aifei.cache.core.CacheUtil;
 import cn.hg.aifei.cache.plugin.CachePlugin;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.*;
@@ -36,11 +34,6 @@ import static org.junit.Assert.*;
 public class CacheUtilTest {
 
     private CachePlugin cachePlugin;
-
-    @BeforeClass
-    public static void setUpLogFactory() {
-        LogKit.get().setLogFactory(new DummyLogFactory());
-    }
 
     @Before
     public void setUp() {

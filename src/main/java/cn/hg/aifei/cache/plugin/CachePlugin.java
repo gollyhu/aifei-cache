@@ -18,7 +18,6 @@ package cn.hg.aifei.cache.plugin;
 
 import cn.aifei.aop.Aop;
 import cn.aifei.aop.AopKit;
-import cn.aifei.log.Log;
 import cn.aifei.plugin.Plugin;
 import cn.aifei.util.Prop;
 import cn.aifei.util.StrUtil;
@@ -83,8 +82,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class CachePlugin implements Plugin {
 
-    private static final Log LOG = Log.get(CachePlugin.class);
-
     /** 主缓存名称（预留） */
     public static final String MAIN_CACHE_NAME = "main";
 
@@ -148,7 +145,6 @@ public class CachePlugin implements Plugin {
 
     @Override
     public void start() {
-        LOG.info("CachePlugin starting...");
 
         // 1. 初始化主缓存（必配）
         initMainCache();
@@ -159,7 +155,6 @@ public class CachePlugin implements Plugin {
         // 3. 注册注入式缓存
         registerInjectableCache();
 
-        LOG.info("CachePlugin started, registered {} caches", registeredCount);
     }
 
     /**
@@ -195,7 +190,6 @@ public class CachePlugin implements Plugin {
     private void setNamespaceOnCache(ICache cache, String namespace) {
         if (cache instanceof AbstractCache) {
             ((AbstractCache) cache).setNamespace(namespace);
-            LOG.debug("Set namespace '{}' on cache: {}", namespace, cache.getName());
         }
     }
 
@@ -206,7 +200,6 @@ public class CachePlugin implements Plugin {
         boolean nullValue = prop.getBoolean(prefix + NULL_VALUE_SUFFIX, false);
         if (cache instanceof AbstractCache) {
             ((AbstractCache) cache).setNullValue(nullValue);
-            LOG.debug("Set nullValue={} on cache: {}", nullValue, cache.getName());
         }
     }
 
@@ -222,11 +215,9 @@ public class CachePlugin implements Plugin {
         }
 
         type = type.trim().toLowerCase();
-        LOG.info("Initializing main cache, type={}", type);
 
         // 读取主缓存的 namespace
         String namespace = resolveNamespace(MAIN_PREFIX);
-        LOG.info("Main cache namespace: '{}'", namespace);
 
         // 创建 Provider
         ICacheProvider provider = createProvider(type, MAIN_PREFIX);
@@ -251,7 +242,6 @@ public class CachePlugin implements Plugin {
         cacheProviderMap.put(cache, provider);
         registeredCount++;
 
-        LOG.info("Main cache initialized: type={}, namespace='{}'", type, namespace);
     }
 
     private static void registerInjectableCache() {
@@ -281,7 +271,6 @@ public class CachePlugin implements Plugin {
     private void initExtensionCaches() {
         String namesStr = prop.get(CACHE_NAMES_KEY);
         if (StrUtil.isBlank(namesStr)) {
-            LOG.debug("No extension caches configured (cache.names is empty)");
             return;
         }
 
@@ -297,7 +286,6 @@ public class CachePlugin implements Plugin {
 
             // 跳过 "main"，已预留表示主缓存
             if (MAIN_CACHE_NAME.equalsIgnoreCase(name)) {
-                LOG.info("Extension cache name 'main' is reserved for main cache, skipping: {}", name);
                 continue;
             }
 
@@ -315,28 +303,23 @@ public class CachePlugin implements Plugin {
         String type = prop.get(prefix + EXT_TYPE_SUFFIX);
 
         if (StrUtil.isBlank(type)) {
-            LOG.warn("Extension cache '{}' type not specified (cache.{}.type), skipping", name, name);
             return;
         }
 
         type = type.trim().toLowerCase();
-        LOG.info("Initializing extension cache: name={}, type={}", name, type);
 
         // 读取扩展缓存的 namespace
         String namespace = resolveNamespace(prefix);
-        LOG.info("Extension cache '{}' namespace: '{}'", name, namespace);
 
         // 创建 Provider
         ICacheProvider provider = createProvider(type, prefix);
         if (provider == null) {
-            LOG.error("Failed to create provider for extension cache '{}': type={}", name, type);
             return;
         }
 
         // 构建缓存实例
         ICache cache = provider.buildCache(name, type, prop, prefix);
         if (cache == null) {
-            LOG.error("Failed to build extension cache '{}'", name);
             return;
         }
 
@@ -351,7 +334,6 @@ public class CachePlugin implements Plugin {
         cacheProviderMap.put(cache, provider);
         registeredCount++;
 
-        LOG.info("Extension cache initialized: name={}, type={}, namespace='{}'", name, type, namespace);
     }
 
     /**
@@ -368,7 +350,6 @@ public class CachePlugin implements Plugin {
             // 使用默认 Provider
             providerClass = DEFAULT_PROVIDER_MAP.get(type);
             if (StrUtil.isBlank(providerClass)) {
-                LOG.error("Unknown cache type: {}, no default provider found", type);
                 return null;
             }
         }
@@ -386,21 +367,16 @@ public class CachePlugin implements Plugin {
         try {
             Class<?> clazz = Class.forName(providerClass);
             if (!ICacheProvider.class.isAssignableFrom(clazz)) {
-                LOG.error("Class {} does not implement CacheProvider", providerClass);
                 return null;
             }
             return (ICacheProvider) clazz.newInstance();
-        } catch (ClassNotFoundException e) {
-            LOG.error("Provider class not found: {}", providerClass, e);
-        } catch (IllegalAccessException | InstantiationException e) {
-            LOG.error("Failed to instantiate provider: {}", providerClass, e);
+        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+            return null;
         }
-        return null;
     }
 
     @Override
     public void stop() {
-        LOG.info("CachePlugin stopping...");
 
         // 清空所有缓存
         CacheManager.clearAll();
@@ -410,14 +386,13 @@ public class CachePlugin implements Plugin {
             try {
                 provider.shutdown();
             } catch (Exception e) {
-                LOG.error("Error shutting down provider", e);
+                // 关闭 Provider 失败时静默忽略
             }
         }
 
         cacheProviderMap.clear();
         registeredCount = 0;
 
-        LOG.info("CachePlugin stopped");
     }
 
     /**
