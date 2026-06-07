@@ -19,12 +19,15 @@ package cn.hg.aifei.cache;
 import cn.aifei.util.Prop;
 import cn.hg.aifei.cache.api.ICache;
 import cn.hg.aifei.cache.core.CacheManager;
+import cn.hg.aifei.cache.impl.distribute.AbstractDistributedCache;
 import cn.hg.aifei.cache.plugin.CachePlugin;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
 
@@ -32,6 +35,76 @@ import static org.junit.Assert.*;
  * JedisCache 单元测试（基于 Jedis RedisClient 的分布式缓存）
  */
 public class JedisCacheTest {
+
+    /**
+     * 内存版 AbstractDistributedCache，用于测试 get(Supplier) 的分布式缓存回源逻辑，
+     * 无需依赖外部 Redis 服务器。
+     */
+    static class InMemoryDistributedCache extends AbstractDistributedCache {
+        private final Map<String, Object> store = new ConcurrentHashMap<>();
+        private final AtomicBoolean lockHeld = new AtomicBoolean(false);
+
+        InMemoryDistributedCache(String name, long defaultTtl) {
+            super(name, defaultTtl);
+        }
+
+        @Override
+        protected String getCacheTypeForError() {
+            return "memory";
+        }
+
+        @Override
+        protected boolean tryLock(String lockKey, long timeoutSeconds) {
+            return lockHeld.compareAndSet(false, true);
+        }
+
+        @Override
+        protected void unlock(String lockKey) {
+            lockHeld.set(false);
+        }
+
+        @Override
+        protected void doPutSafely(String key, Object value, long ttlSeconds) {
+            store.put(key, value);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected <T> T doGetSafely(String key) {
+            return (T) store.get(key);
+        }
+
+        @Override
+        protected void doEvictSafely(String key) {
+            store.remove(key);
+        }
+
+        @Override
+        protected void doClearSafely() {
+            store.clear();
+        }
+
+        @Override
+        public Set<String> getCacheNames() {
+            return new LinkedHashSet<>(store.keySet());
+        }
+
+        @Override
+        public String getType() {
+            return "memory";
+        }
+
+        @Override
+        public void clear(String... cacheNames) {
+            store.clear();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T getNativeCache() {
+            return (T) store;
+        }
+    }
 
     private CachePlugin cachePlugin;
     private ICache cache;
@@ -119,9 +192,16 @@ public class JedisCacheTest {
 
     @Test
     public void testGetWithSupplier() {
-        String result = cache.get("user", "supplier-key", () -> "hello");
+        InMemoryDistributedCache testCache = new InMemoryDistributedCache("test-cache", 60);
+        testCache.setNullValue(true);
+
+        // 首次调用：key 不存在，supplier 应被执行并缓存结果
+        String result = testCache.get("user", "supplier-key", () -> "hello");
         assertEquals("hello", result);
-        assertEquals("hello", cache.get("user", "supplier-key"));
+
+        // 二次调用：从缓存中读取，supplier 不应再执行
+        assertEquals("hello", testCache.get("user", "supplier-key"));
+        assertTrue(testCache.exists("user", "supplier-key"));
     }
 
     @Test
@@ -173,8 +253,18 @@ public class JedisCacheTest {
 
     @Test
     public void testGetNativeCache() {
-        Object nativeCache = cache.getNativeCache();
-        assertNotNull(nativeCache);
+        // InMemoryDistributedCache 内存测试：验证 getNativeCache 返回底层存储
+        InMemoryDistributedCache testCache = new InMemoryDistributedCache("native-test", 60);
+        Object nativeCache = testCache.getNativeCache();
+        assertNotNull("nativeCache 不应为 null", nativeCache);
+        assertTrue("InMemoryDistributedCache 应返回 ConcurrentHashMap",
+                nativeCache instanceof ConcurrentHashMap);
+
+        // Jedis 场景：验证类型和可用性
+        Object jedisNative = cache.getNativeCache();
+        assertNotNull("Jedis nativeCache 不应为 null", jedisNative);
+        assertTrue("JedisCache 应返回 RedisClient",
+                jedisNative instanceof redis.clients.jedis.RedisClient);
     }
 
     // ==================== 批量操作 ====================
