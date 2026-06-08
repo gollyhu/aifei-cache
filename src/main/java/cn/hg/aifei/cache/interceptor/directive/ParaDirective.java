@@ -31,13 +31,13 @@ import cn.hg.aifei.cache.interceptor.KeyContext;
 import java.io.IOException;
 
 /**
- * #para() 指令 — 获取方法参数值。
+ * #p() 指令 — 获取方法参数值。
  *
  * <pre>
  * 用法：
- *   #para()          — 拼接所有非 null 方法参数
- *   #para("name")    — 按参数名获取
- *   #para(id)        — 变量解析后获取
+ *   #p()          — 拼接所有非 null 方法参数
+ *   #p("name")    — 按参数名获取
+ *   #p(id)        — 变量解析后获取
  * </pre>
  */
 public class ParaDirective extends Directive {
@@ -45,7 +45,7 @@ public class ParaDirective extends Directive {
     @Override
     public void setExprList(ExprList exprList) {
         if (exprList.length() > 1) {
-            throw new ParseException("#para directive support 0 or 1 parameter only", location);
+            throw new ParseException("#p directive support 0 or 1 parameter only", location);
         }
         super.setExprList(exprList);
     }
@@ -54,12 +54,12 @@ public class ParaDirective extends Directive {
     public void exec(Env env, Scope scope, Writer writer) {
         KeyContext ctx = KeyContext.get();
         if (ctx == null) {
-            throw new TemplateException("#para directive requires KeyContext in thread", location);
+            throw new TemplateException("#p directive requires KeyContext in thread", location);
         }
 
         try {
             if (exprList.length() == 0) {
-                // #para() — 拼接所有参数
+                // #p() — 拼接所有参数
                 writer.write(concatArgs(ctx.args));
             } else {
                 writer.write(singleArg(scope, ctx));
@@ -72,7 +72,7 @@ public class ParaDirective extends Directive {
     private String singleArg(Scope scope, KeyContext ctx) {
         Expr first = exprList.getFirstExpr();
 
-        // #para(0) — 整数索引
+        // #p(0) — 整数索引
         if (first instanceof Const && ((Const) first).isInt()) {
             int index = ((Const) first).getInt();
             if (index >= 0 && index < ctx.args.length) {
@@ -81,14 +81,14 @@ public class ParaDirective extends Directive {
             return "";
         }
 
-        // #para("name") — 字符串参数名
+        // #p("name") — 字符串参数名
         if (first instanceof Const && ((Const) first).isStr()) {
             String name = ((Const) first).getStr();
             Object val = ctx.getArgByName(name);
             return val != null ? toKeyString(val) : "";
         }
 
-        // #para(id) — Scope 变量引用
+        // #p(id) — Scope 变量引用
         if (first instanceof Id) {
             String id = ((Id) first).getId();
             // 先尝试从 Scope 获取

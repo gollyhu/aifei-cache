@@ -42,7 +42,7 @@ import java.lang.reflect.Method;
  * 通过 aifei 的 @Before 注解应用到 Service 方法或类上：
  * <pre>
  *   &#64;Before(CacheInterceptor.class)
- *   &#64;CachePut(name = "product", key = "prod-#para(id)", ttlSeconds = 300)
+ *   &#64;CachePut(name = "product", key = "prod-#p(id)", ttlSeconds = 300)
  *   public Product getProduct(Long id) { ... }
  * </pre>
  * 或注册为全局拦截器。

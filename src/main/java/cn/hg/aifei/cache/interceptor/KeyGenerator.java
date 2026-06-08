@@ -31,10 +31,10 @@ import java.util.Map;
  * <h3>支持的指令</h3>
  * <table>
  *   <tr><th>指令</th><th>说明</th></tr>
- *   <tr><td>{@code #para()}</td><td>拼接所有方法参数（复杂类型转 JSON）</td></tr>
- *   <tr><td>{@code #para(0)}</td><td>按参数索引获取</td></tr>
- *   <tr><td>{@code #para("name")}</td><td>按参数名称获取</td></tr>
- *   <tr><td>{@code #para(id)}</td><td>Scope 变量解析后序列化</td></tr>
+ *   <tr><td>{@code #p()}</td><td>拼接所有方法参数（复杂类型转 JSON）</td></tr>
+ *   <tr><td>{@code #p(0)}</td><td>按参数索引获取</td></tr>
+ *   <tr><td>{@code #p("name")}</td><td>按参数名称获取</td></tr>
+ *   <tr><td>{@code #p(id)}</td><td>Scope 变量解析后序列化</td></tr>
  * </table>
  *
  * @author aifei
@@ -54,7 +54,7 @@ public class KeyGenerator {
     /**
      * 根据表达式模板生成缓存 Key。
      *
-     * @param expression 表达式模板，如 "prod-#para(id)"
+     * @param expression 表达式模板，如 "prod-#p(id)"
      * @param method     目标方法
      * @param args       方法参数值
      * @param input      HTTP 请求输入（可为 null）
